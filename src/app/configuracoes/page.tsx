@@ -52,7 +52,7 @@ export default function ConfiguracoesPage() {
         const response = await fetch('/api/categories')
         if (response.ok) {
           const data = await response.json()
-          setCategories(data)
+          setCategories(data.ingredientCategories || [])
         }
       } else if (activeTab === 'units') {
         const response = await fetch('/api/measurement-units')

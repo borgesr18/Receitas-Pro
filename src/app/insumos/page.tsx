@@ -14,16 +14,34 @@ interface Ingredient {
   expiryDate?: string
   storageLocation?: string
   unit: {
+    id: string
     name: string
     factorToGram?: number
   }
   category: {
+    id: string
     name: string
   }
 }
 
+interface MeasurementUnit {
+  id: string
+  name: string
+  type: string
+  factorToGram?: number
+  factorToML?: number
+}
+
+interface IngredientCategory {
+  id: string
+  name: string
+  description?: string
+}
+
 export default function InsumosPage() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
+  const [units, setUnits] = useState<MeasurementUnit[]>([])
+  const [categories, setCategories] = useState<IngredientCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -43,7 +61,33 @@ export default function InsumosPage() {
 
   useEffect(() => {
     fetchIngredients()
+    fetchUnits()
+    fetchCategories()
   }, [])
+
+  const fetchUnits = async () => {
+    try {
+      const response = await fetch('/api/measurement-units')
+      if (response.ok) {
+        const data = await response.json()
+        setUnits(data)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar unidades:', error)
+    }
+  }
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories')
+      if (response.ok) {
+        const data = await response.json()
+        setCategories(data.ingredientCategories || [])
+      }
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error)
+    }
+  }
 
   const fetchIngredients = async () => {
     try {
@@ -98,8 +142,8 @@ export default function InsumosPage() {
       purchaseDate: ingredient.purchaseDate ? ingredient.purchaseDate.split('T')[0] : '',
       expiryDate: ingredient.expiryDate ? ingredient.expiryDate.split('T')[0] : '',
       storageLocation: ingredient.storageLocation || 'seca',
-      unitId: '',
-      categoryId: ''
+      unitId: ingredient.unit.id,
+      categoryId: ingredient.category.id
     })
     setEditingId(ingredient.id)
     setShowForm(true)
@@ -345,6 +389,40 @@ export default function InsumosPage() {
                       onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
                       className="input-field w-full"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-text mb-2">
+                      Unidade de Medida *
+                    </label>
+                    <select
+                      value={formData.unitId}
+                      onChange={(e) => setFormData({ ...formData, unitId: e.target.value })}
+                      className="input-field w-full"
+                      required
+                    >
+                      <option value="">Selecione uma unidade</option>
+                      {units.map(unit => (
+                        <option key={unit.id} value={unit.id}>{unit.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-text mb-2">
+                      Categoria *
+                    </label>
+                    <select
+                      value={formData.categoryId}
+                      onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                      className="input-field w-full"
+                      required
+                    >
+                      <option value="">Selecione uma categoria</option>
+                      {categories.map(category => (
+                        <option key={category.id} value={category.id}>{category.name}</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
