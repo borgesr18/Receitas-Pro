@@ -1,0 +1,288 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(EDITOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  ingredients       Ingredient[]
+  products         Product[]
+  fichasTecnicas   FichaTecnica[]
+  productions      Production[]
+  sales            Sale[]
+  stockMovements   StockMovement[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+model MeasurementUnit {
+  id             String  @id @default(cuid())
+  name           String  @unique
+  type           String  // peso, volume, unidade
+  factorToGram   Float?  // Fator de conversão para gramas
+  factorToML     Float?  // Fator de conversão para ml
+  userId         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relacionamentos
+  ingredients    Ingredient[]
+
+  @@map("measurement_units")
+}
+
+model IngredientCategory {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  ingredients Ingredient[]
+
+  @@map("ingredient_categories")
+}
+
+model Ingredient {
+  id                String   @id @default(cuid())
+  name              String
+  purchaseQuantity  Float    // Quantidade comprada na unidade
+  pricePerUnit      Float    // Preço por unidade de compra
+  supplier          String?
+  purchaseDate      DateTime?
+  expiryDate        DateTime?
+  storageLocation   String?  // seca, refrigerada, congelada
+  userId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relacionamentos
+  unitId            String
+  unit              MeasurementUnit @relation(fields: [unitId], references: [id])
+  categoryId        String
+  category          IngredientCategory @relation(fields: [categoryId], references: [id])
+  user              User @relation(fields: [userId], references: [id])
+  
+  // Relacionamentos com fichas técnicas
+  fichaIngredients  FichaIngredient[]
+  stockMovements    StockMovement[]
+  priceHistory      IngredientPriceHistory[]
+
+  @@map("ingredients")
+}
+
+model IngredientPriceHistory {
+  id           String   @id @default(cuid())
+  price        Float
+  date         DateTime @default(now())
+  userId       String
+  createdAt    DateTime @default(now())
+
+  // Relacionamentos
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@map("ingredient_price_history")
+}
+
+model ProductCategory {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  products    Product[]
+
+  @@map("product_categories")
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  name          String
+  averageWeight Float    // Peso médio final em gramas
+  userId        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relacionamentos
+  categoryId    String
+  category      ProductCategory @relation(fields: [categoryId], references: [id])
+  user          User @relation(fields: [userId], references: [id])
+  
+  fichasTecnicas FichaTecnica[]
+  sales         Sale[]
+  productions   Production[]
+  priceChannels ProductPriceChannel[]
+
+  @@map("products")
+}
+
+model SalesChannel {
+  id          String   @id @default(cuid())
+  name        String   // varejo, atacado
+  description String?
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  priceChannels ProductPriceChannel[]
+  sales         Sale[]
+
+  @@map("sales_channels")
+}
+
+model ProductPriceChannel {
+  id        String   @id @default(cuid())
+  price     Float
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  channelId String
+  channel   SalesChannel @relation(fields: [channelId], references: [id])
+
+  @@unique([productId, channelId])
+  @@map("product_price_channels")
+}
+
+model FichaTecnica {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  prepTime        Int?     // Tempo de preparo em minutos
+  ovenTemp        Int?     // Temperatura do forno
+  instructions    String?  // Modo de preparo
+  observations    String?  // Observações técnicas
+  version         Int      @default(1)
+  isActive        Boolean  @default(true)
+  userId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relacionamentos
+  productId       String
+  product         Product @relation(fields: [productId], references: [id])
+  user            User @relation(fields: [userId], references: [id])
+  
+  ingredients     FichaIngredient[]
+  productions     Production[]
+
+  @@map("fichas_tecnicas")
+}
+
+model FichaIngredient {
+  id           String   @id @default(cuid())
+  quantity     Float    // Quantidade em gramas ou ml
+  percentage   Float    // Porcentagem baseada na farinha (100%)
+  userId       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relacionamentos
+  fichaId      String
+  ficha        FichaTecnica @relation(fields: [fichaId], references: [id])
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@unique([fichaId, ingredientId])
+  @@map("ficha_ingredients")
+}
+
+model Production {
+  id              String   @id @default(cuid())
+  quantityProduced Float   // Quantidade produzida
+  lossPercentage  Float?   // Percentual de perdas
+  lossWeight      Float?   // Peso das perdas
+  batchNumber     String   // Número do lote
+  productionDate  DateTime @default(now())
+  userId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relacionamentos
+  fichaId         String
+  ficha           FichaTecnica @relation(fields: [fichaId], references: [id])
+  productId       String
+  product         Product @relation(fields: [productId], references: [id])
+  user            User @relation(fields: [userId], references: [id])
+  
+  stockMovements  StockMovement[]
+
+  @@map("productions")
+}
+
+model StockMovement {
+  id          String      @id @default(cuid())
+  type        MovementType
+  quantity    Float
+  unitPrice   Float?
+  totalValue  Float?
+  reason      String?
+  date        DateTime    @default(now())
+  userId      String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relacionamentos
+  ingredientId String?
+  ingredient   Ingredient? @relation(fields: [ingredientId], references: [id])
+  productionId String?
+  production   Production? @relation(fields: [productionId], references: [id])
+  user         User @relation(fields: [userId], references: [id])
+
+  @@map("stock_movements")
+}
+
+enum MovementType {
+  IN      // Entrada
+  OUT     // Saída
+  LOSS    // Perda
+  ADJUST  // Ajuste
+}
+
+model Sale {
+  id          String   @id @default(cuid())
+  weight      Float    // Peso vendido
+  unitPrice   Float    // Preço unitário
+  totalPrice  Float    // Preço total
+  profit      Float    // Lucro aplicado (%)
+  saleDate    DateTime @default(now())
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  channelId   String
+  channel     SalesChannel @relation(fields: [channelId], references: [id])
+  user        User @relation(fields: [userId], references: [id])
+
+  @@map("sales")
+}
