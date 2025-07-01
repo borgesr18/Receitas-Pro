@@ -32,10 +32,15 @@ export default function VendasPage() {
     productId: '',
     quantity: '',
     weight: '',
-    unitPrice: '',
     channel: 'varejo',
+    unitPrice: '',
+    totalPrice: '',
+    costPrice: '',
+    profit: '',
     notes: ''
   })
+
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchSales()
@@ -68,31 +73,104 @@ export default function VendasPage() {
     }
   }
 
+  const calculatePricing = (productId: string, weight: string, channel: string) => {
+    const product = products.find(p => p.id === productId)
+    if (!product || !weight) return
+
+    const weightNum = parseFloat(weight)
+    const productPrice = product.prices?.find((p: any) => p.channel === channel)
+    
+    if (productPrice) {
+      const unitPrice = productPrice.price
+      const totalPrice = (unitPrice / product.averageWeight) * weightNum
+      const costPrice = product.costPerGram ? product.costPerGram * weightNum : 0
+      const profit = totalPrice - costPrice
+
+      setFormData(prev => ({
+        ...prev,
+        unitPrice: unitPrice.toFixed(2),
+        totalPrice: totalPrice.toFixed(2),
+        costPrice: costPrice.toFixed(2),
+        profit: profit.toFixed(2)
+      }))
+    }
+  }
+
+  const handleProductChange = (productId: string) => {
+    setFormData(prev => ({ ...prev, productId }))
+    if (formData.weight && formData.channel) {
+      calculatePricing(productId, formData.weight, formData.channel)
+    }
+  }
+
+  const handleWeightChange = (weight: string) => {
+    setFormData(prev => ({ ...prev, weight }))
+    if (formData.productId && formData.channel) {
+      calculatePricing(formData.productId, weight, formData.channel)
+    }
+  }
+
+  const handleChannelChange = (channel: string) => {
+    setFormData(prev => ({ ...prev, channel }))
+    if (formData.productId && formData.weight) {
+      calculatePricing(formData.productId, formData.weight, channel)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    if (!formData.productId || !formData.weight || !formData.totalPrice) {
+      alert('Preencha todos os campos obrigatórios')
+      return
+    }
+
     try {
-      const response = await fetch('/api/sales', {
-        method: 'POST',
+      const saleData = {
+        ...formData,
+        quantity: parseInt(formData.quantity) || 1,
+        weight: parseFloat(formData.weight),
+        unitPrice: parseFloat(formData.unitPrice),
+        totalPrice: parseFloat(formData.totalPrice),
+        costPrice: parseFloat(formData.costPrice) || 0,
+        profit: parseFloat(formData.profit) || 0
+      }
+
+      const url = editingId ? `/api/sales/${editingId}` : '/api/sales'
+      const method = editingId ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          quantity: parseInt(formData.quantity),
-          weight: parseFloat(formData.weight),
-          unitPrice: parseFloat(formData.unitPrice)
-        })
+        body: JSON.stringify(saleData)
       })
 
       if (response.ok) {
+        const sale = await response.json()
+        
+        await fetch('/api/stock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            itemId: formData.productId,
+            itemType: 'PRODUCT',
+            type: 'OUT',
+            quantity: parseFloat(formData.weight),
+            reason: `Venda - ${formData.channel}`,
+            batchNumber: `SALE-${Date.now()}`
+          })
+        })
+
         await fetchSales()
         resetForm()
+        alert('Venda registrada com sucesso!')
       } else {
         const error = await response.json()
-        alert(error.error || 'Erro ao registrar venda')
+        alert(error.error || 'Erro ao salvar venda')
       }
     } catch (error) {
-      console.error('Erro ao registrar venda:', error)
-      alert('Erro ao registrar venda')
+      console.error('Erro ao salvar venda:', error)
+      alert('Erro ao salvar venda')
     }
   }
 
@@ -101,10 +179,14 @@ export default function VendasPage() {
       productId: '',
       quantity: '',
       weight: '',
-      unitPrice: '',
       channel: 'varejo',
+      unitPrice: '',
+      totalPrice: '',
+      costPrice: '',
+      profit: '',
       notes: ''
     })
+    setEditingId(null)
     setShowForm(false)
   }
 
@@ -279,7 +361,7 @@ export default function VendasPage() {
                   </label>
                   <select
                     value={formData.productId}
-                    onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
+                    onChange={(e) => handleProductChange(e.target.value)}
                     className="input-field w-full"
                     required
                   >
@@ -315,7 +397,7 @@ export default function VendasPage() {
                       type="number"
                       step="0.01"
                       value={formData.weight}
-                      onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                      onChange={(e) => handleWeightChange(e.target.value)}
                       className="input-field w-full"
                       placeholder="Peso total vendido"
                       required
@@ -324,16 +406,29 @@ export default function VendasPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-text mb-2">
-                      Preço Unitário *
+                      Preço Total *
                     </label>
                     <input
                       type="number"
                       step="0.01"
-                      value={formData.unitPrice}
-                      onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
+                      value={formData.totalPrice}
+                      onChange={(e) => setFormData({ ...formData, totalPrice: e.target.value })}
                       className="input-field w-full"
-                      placeholder="Preço por unidade"
+                      placeholder="Valor total da venda"
                       required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-text mb-2">
+                      Lucro Calculado
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.profit ? `R$ ${formData.profit}` : ''}
+                      className="input-field w-full bg-card-background"
+                      placeholder="Calculado automaticamente"
+                      readOnly
                     />
                   </div>
 
@@ -343,7 +438,7 @@ export default function VendasPage() {
                     </label>
                     <select
                       value={formData.channel}
-                      onChange={(e) => setFormData({ ...formData, channel: e.target.value })}
+                      onChange={(e) => handleChannelChange(e.target.value)}
                       className="input-field w-full"
                       required
                     >

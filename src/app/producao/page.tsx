@@ -26,6 +26,7 @@ export default function ProducaoPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     technicalSheetId: '',
@@ -69,28 +70,78 @@ export default function ProducaoPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    if (!formData.technicalSheetId || !formData.quantity || !formData.actualWeight) {
+      alert('Preencha todos os campos obrigatórios')
+      return
+    }
+
     try {
-      const response = await fetch('/api/production', {
-        method: 'POST',
+      const selectedSheet = technicalSheets.find(sheet => sheet.id === formData.technicalSheetId)
+      const expectedWeight = selectedSheet ? selectedSheet.finalWeight * parseFloat(formData.quantity) : 0
+      const actualWeight = parseFloat(formData.actualWeight)
+      const losses = formData.losses ? parseFloat(formData.losses) : (expectedWeight - actualWeight)
+
+      const productionData = {
+        ...formData,
+        quantity: parseFloat(formData.quantity),
+        actualWeight,
+        losses,
+        expectedWeight
+      }
+
+      const url = editingId ? `/api/production/${editingId}` : '/api/production'
+      const method = editingId ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          quantity: parseInt(formData.quantity),
-          actualWeight: parseFloat(formData.actualWeight),
-          losses: parseFloat(formData.losses) || 0
-        })
+        body: JSON.stringify(productionData)
       })
 
       if (response.ok) {
+        const production = await response.json()
+        
+        await fetch('/api/stock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            itemId: production.technicalSheetId,
+            itemType: 'PRODUCT',
+            type: 'IN',
+            quantity: actualWeight,
+            reason: `Produção - Lote ${production.batchNumber}`,
+            batchNumber: production.batchNumber
+          })
+        })
+
+        if (selectedSheet?.ingredients) {
+          for (const ingredient of selectedSheet.ingredients) {
+            const consumedQuantity = ingredient.quantity * parseFloat(formData.quantity)
+            await fetch('/api/stock', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                itemId: ingredient.ingredient.id,
+                itemType: 'INGREDIENT',
+                type: 'OUT',
+                quantity: consumedQuantity,
+                reason: `Produção - ${selectedSheet.name}`,
+                batchNumber: production.batchNumber
+              })
+            })
+          }
+        }
+
         await fetchProductions()
         resetForm()
+        alert(`Produção registrada com sucesso! Lote: ${production.batchNumber}`)
       } else {
         const error = await response.json()
-        alert(error.error || 'Erro ao registrar produção')
+        alert(error.error || 'Erro ao salvar produção')
       }
     } catch (error) {
-      console.error('Erro ao registrar produção:', error)
-      alert('Erro ao registrar produção')
+      console.error('Erro ao salvar produção:', error)
+      alert('Erro ao salvar produção')
     }
   }
 
@@ -102,6 +153,7 @@ export default function ProducaoPage() {
       losses: '',
       notes: ''
     })
+    setEditingId(null)
     setShowForm(false)
   }
 

@@ -3,6 +3,13 @@
 import React, { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { Plus, Search, Edit, Trash2, FileText, Calculator, Printer } from 'lucide-react'
+import { 
+  calculateBakerPercentage, 
+  calculateTotalCost, 
+  calculateCostPerGram,
+  formatCurrency,
+  formatWeight
+} from '@/utils/calculations'
 
 interface TechnicalSheet {
   id: string
@@ -44,12 +51,30 @@ export default function FichasTecnicasPage() {
     ovenTemperature: '',
     instructions: '',
     observations: '',
-    finalWeight: ''
+    finalWeight: '',
+    ingredients: [] as any[]
   })
+
+  const [showBakerCalculator, setShowBakerCalculator] = useState(false)
+  const [flourWeight, setFlourWeight] = useState('')
+  const [availableIngredients, setAvailableIngredients] = useState<any[]>([])
 
   useEffect(() => {
     fetchSheets()
+    fetchIngredients()
   }, [])
+
+  const fetchIngredients = async () => {
+    try {
+      const response = await fetch('/api/ingredients')
+      if (response.ok) {
+        const data = await response.json()
+        setAvailableIngredients(data)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar ingredientes:', error)
+    }
+  }
 
   const fetchSheets = async () => {
     try {
@@ -104,7 +129,8 @@ export default function FichasTecnicasPage() {
       ovenTemperature: sheet.ovenTemperature?.toString() || '',
       instructions: sheet.instructions || '',
       observations: sheet.observations || '',
-      finalWeight: sheet.finalWeight.toString()
+      finalWeight: sheet.finalWeight.toString(),
+      ingredients: sheet.ingredients || []
     })
     setEditingId(sheet.id)
     setShowForm(true)
@@ -127,6 +153,29 @@ export default function FichasTecnicasPage() {
       console.error('Erro ao excluir ficha técnica:', error)
       alert('Erro ao excluir ficha técnica')
     }
+  }
+
+  const handleBakerCalculation = () => {
+    if (!flourWeight || !formData.ingredients.length) {
+      alert('Informe o peso da farinha e adicione ingredientes')
+      return
+    }
+
+    const flourWeightNum = parseFloat(flourWeight)
+    const calculatedIngredients = calculateBakerPercentage(flourWeightNum, formData.ingredients)
+    const totalCost = calculateTotalCost(calculatedIngredients)
+    const costPerGram = calculateCostPerGram(totalCost, parseFloat(formData.finalWeight))
+
+    setFormData({
+      ...formData,
+      ingredients: calculatedIngredients.map(calc => ({
+        ...calc.ingredient,
+        quantity: calc.recalculatedQuantity
+      }))
+    })
+
+    setShowBakerCalculator(false)
+    alert(`Receita recalculada! Custo total: ${formatCurrency(totalCost)}`)
   }
 
   const handlePrint = (sheet: TechnicalSheet) => {
@@ -214,10 +263,13 @@ export default function FichasTecnicasPage() {
       ovenTemperature: '',
       instructions: '',
       observations: '',
-      finalWeight: ''
+      finalWeight: '',
+      ingredients: []
     })
     setEditingId(null)
     setShowForm(false)
+    setShowBakerCalculator(false)
+    setFlourWeight('')
   }
 
   const filteredSheets = sheets.filter(sheet =>
@@ -437,22 +489,85 @@ export default function FichasTecnicasPage() {
                   />
                 </div>
 
+                <div className="flex justify-between items-center pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowBakerCalculator(true)}
+                    className="btn-secondary flex items-center gap-2"
+                  >
+                    <Calculator size={16} />
+                    Calcular % Padeiro
+                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={resetForm}
+                      className="btn-secondary"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-primary"
+                    >
+                      {editingId ? 'Atualizar' : 'Salvar'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {showBakerCalculator && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="card w-full max-w-md">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-text">Cálculo % de Padeiro</h2>
+                <button
+                  onClick={() => setShowBakerCalculator(false)}
+                  className="text-text-secondary hover:text-text"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">
+                    Peso da Farinha (g) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={flourWeight}
+                    onChange={(e) => setFlourWeight(e.target.value)}
+                    className="input-field w-full"
+                    placeholder="Ex: 1000g"
+                    required
+                  />
+                  <p className="text-text-secondary text-sm mt-1">
+                    A farinha será considerada 100% e todos os outros ingredientes serão recalculados proporcionalmente.
+                  </p>
+                </div>
+
                 <div className="flex justify-end gap-3 pt-4">
                   <button
                     type="button"
-                    onClick={resetForm}
+                    onClick={() => setShowBakerCalculator(false)}
                     className="btn-secondary"
                   >
                     Cancelar
                   </button>
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={handleBakerCalculation}
                     className="btn-primary"
                   >
-                    {editingId ? 'Atualizar' : 'Salvar'}
+                    Recalcular Receita
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         )}

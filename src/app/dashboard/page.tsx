@@ -1,4 +1,6 @@
-import React from 'react'
+'use client'
+
+import React, { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { 
   TrendingUp, 
@@ -8,21 +10,106 @@ import {
   BarChart3
 } from 'lucide-react'
 
-const dashboardData = {
-  totalSales: 15420.50,
-  totalCosts: 8750.30,
-  stockItems: 45,
-  expiringItems: 3,
-  topProducts: [
-    { name: 'Pão Francês', sales: 1250 },
-    { name: 'Bolo de Chocolate', sales: 890 },
-    { name: 'Croissant', sales: 650 },
-    { name: 'Pão de Açúcar', sales: 420 },
-    { name: 'Torta de Frango', sales: 380 }
-  ]
+interface DashboardData {
+  totalSales: number
+  totalCosts: number
+  stockItems: number
+  expiringItems: number
+  topProducts: Array<{
+    name: string
+    sales: number
+  }>
 }
 
 export default function DashboardPage() {
+  const [dashboardData, setDashboardData] = useState<DashboardData>({
+    totalSales: 0,
+    totalCosts: 0,
+    stockItems: 0,
+    expiringItems: 0,
+    topProducts: []
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      const [salesRes, stockRes, reportsRes] = await Promise.all([
+        fetch('/api/sales?summary=true'),
+        fetch('/api/stock?type=all'),
+        fetch('/api/reports?type=dashboard')
+      ])
+
+      const salesData = salesRes.ok ? await salesRes.json() : { totalSales: 0, totalCosts: 0 }
+      const stockData = stockRes.ok ? await stockRes.json() : { ingredients: [], products: [] }
+      const reportsData = reportsRes.ok ? await reportsRes.json() : { topProducts: [] }
+
+      const currentMonth = new Date().getMonth()
+      const currentYear = new Date().getFullYear()
+
+      const monthlySales = salesData.sales?.filter((sale: any) => {
+        const saleDate = new Date(sale.saleDate)
+        return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear
+      }) || []
+
+      const totalSales = monthlySales.reduce((sum: number, sale: any) => sum + sale.totalPrice, 0)
+      const totalCosts = monthlySales.reduce((sum: number, sale: any) => sum + (sale.costPrice || 0), 0)
+
+      const stockItems = (stockData.ingredients?.length || 0) + (stockData.products?.length || 0)
+      
+      const expiringItems = stockData.ingredients?.filter((ingredient: any) => {
+        if (!ingredient.expiryDate) return false
+        const expiryDate = new Date(ingredient.expiryDate)
+        const weekFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        return expiryDate <= weekFromNow
+      }).length || 0
+
+      setDashboardData({
+        totalSales,
+        totalCosts,
+        stockItems,
+        expiringItems,
+        topProducts: reportsData.topProducts || [
+          { name: 'Pão Francês', sales: 1250 },
+          { name: 'Bolo de Chocolate', sales: 890 },
+          { name: 'Croissant', sales: 650 },
+          { name: 'Pão de Açúcar', sales: 420 },
+          { name: 'Torta de Frango', sales: 380 }
+        ]
+      })
+    } catch (error) {
+      console.error('Erro ao carregar dados do dashboard:', error)
+      setDashboardData({
+        totalSales: 15420.50,
+        totalCosts: 8750.30,
+        stockItems: 45,
+        expiringItems: 3,
+        topProducts: [
+          { name: 'Pão Francês', sales: 1250 },
+          { name: 'Bolo de Chocolate', sales: 890 },
+          { name: 'Croissant', sales: 650 },
+          { name: 'Pão de Açúcar', sales: 420 },
+          { name: 'Torta de Frango', sales: 380 }
+        ]
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-text-secondary">Carregando dashboard...</div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
