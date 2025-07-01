@@ -194,8 +194,30 @@ export default function FichasTecnicasPage() {
             .ingredients-table th, .ingredients-table td { 
               border: 1px solid #ccc; padding: 8px; text-align: left; 
             }
-            .cost-info { background: #f5f5f5; padding: 15px; margin: 20px 0; }
-            @media print { body { margin: 0; } }
+            .cost-info { 
+              background: #f5f5f5; 
+              padding: 15px; 
+              margin: 20px 0; 
+              border: 1px solid #ccc; 
+            }
+            .instructions { 
+              margin-top: 20px; 
+              page-break-inside: avoid; 
+            }
+            @page { 
+              size: A4; 
+              margin: 2cm; 
+            }
+            @media print { 
+              body { 
+                margin: 0; 
+                font-size: 12pt; 
+                line-height: 1.4; 
+              } 
+              .no-print { 
+                display: none !important; 
+              }
+            }
           </style>
         </head>
         <body>

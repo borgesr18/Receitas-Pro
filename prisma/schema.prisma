@@ -18,7 +18,7 @@ model User {
   // Relacionamentos
   ingredients       Ingredient[]
   products         Product[]
-  fichasTecnicas   FichaTecnica[]
+  technicalSheets  TechnicalSheet[]
   productions      Production[]
   sales            Sale[]
   stockMovements   StockMovement[]
@@ -83,7 +83,7 @@ model Ingredient {
   user              User @relation(fields: [userId], references: [id])
   
   // Relacionamentos com fichas técnicas
-  fichaIngredients  FichaIngredient[]
+  technicalSheetIngredients TechnicalSheetIngredient[]
   stockMovements    StockMovement[]
   priceHistory      IngredientPriceHistory[]
 
@@ -131,31 +131,18 @@ model Product {
   category      ProductCategory @relation(fields: [categoryId], references: [id])
   user          User @relation(fields: [userId], references: [id])
   
-  fichasTecnicas FichaTecnica[]
-  sales         Sale[]
-  productions   Production[]
-  priceChannels ProductPriceChannel[]
+  technicalSheets TechnicalSheet[]
+  sales          Sale[]
+  productions    Production[]
+  prices         ProductPrice[]
 
   @@map("products")
 }
 
-model SalesChannel {
-  id          String   @id @default(cuid())
-  name        String   // varejo, atacado
-  description String?
-  userId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
-  // Relacionamentos
-  priceChannels ProductPriceChannel[]
-  sales         Sale[]
-
-  @@map("sales_channels")
-}
-
-model ProductPriceChannel {
+model ProductPrice {
   id        String   @id @default(cuid())
+  channel   String   // varejo, atacado
   price     Float
   userId    String
   createdAt DateTime @default(now())
@@ -164,21 +151,22 @@ model ProductPriceChannel {
   // Relacionamentos
   productId String
   product   Product @relation(fields: [productId], references: [id])
-  channelId String
-  channel   SalesChannel @relation(fields: [channelId], references: [id])
 
-  @@unique([productId, channelId])
-  @@map("product_price_channels")
+  @@unique([productId, channel])
+  @@map("product_prices")
 }
 
-model FichaTecnica {
+model TechnicalSheet {
   id              String   @id @default(cuid())
   name            String
   description     String?
-  prepTime        Int?     // Tempo de preparo em minutos
-  ovenTemp        Int?     // Temperatura do forno
+  preparationTime Int?     // Tempo de preparo em minutos
+  ovenTemperature Int?     // Temperatura do forno
   instructions    String?  // Modo de preparo
   observations    String?  // Observações técnicas
+  finalWeight     Float    // Peso final em gramas
+  totalCost       Float    @default(0)
+  costPerGram     Float    @default(0)
   version         Int      @default(1)
   isActive        Boolean  @default(true)
   userId          String
@@ -186,17 +174,16 @@ model FichaTecnica {
   updatedAt       DateTime @updatedAt
 
   // Relacionamentos
-  productId       String
-  product         Product @relation(fields: [productId], references: [id])
+  productId       String?
+  product         Product? @relation(fields: [productId], references: [id])
   user            User @relation(fields: [userId], references: [id])
-  
-  ingredients     FichaIngredient[]
+  ingredients     TechnicalSheetIngredient[]
   productions     Production[]
 
-  @@map("fichas_tecnicas")
+  @@map("technical_sheets")
 }
 
-model FichaIngredient {
+model TechnicalSheetIngredient {
   id           String   @id @default(cuid())
   quantity     Float    // Quantidade em gramas ou ml
   percentage   Float    // Porcentagem baseada na farinha (100%)
@@ -205,20 +192,22 @@ model FichaIngredient {
   updatedAt    DateTime @updatedAt
 
   // Relacionamentos
-  fichaId      String
-  ficha        FichaTecnica @relation(fields: [fichaId], references: [id])
-  ingredientId String
-  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  technicalSheetId String
+  technicalSheet   TechnicalSheet @relation(fields: [technicalSheetId], references: [id])
+  ingredientId     String
+  ingredient       Ingredient @relation(fields: [ingredientId], references: [id])
 
-  @@unique([fichaId, ingredientId])
-  @@map("ficha_ingredients")
+  @@unique([technicalSheetId, ingredientId])
+  @@map("technical_sheet_ingredients")
 }
 
 model Production {
   id              String   @id @default(cuid())
-  quantityProduced Float   // Quantidade produzida
+  quantity        Float    // Quantidade produzida
+  actualWeight    Float    // Peso real produzido
+  losses          Float?   // Perdas em gramas
   lossPercentage  Float?   // Percentual de perdas
-  lossWeight      Float?   // Peso das perdas
+  notes           String?  // Observações
   batchNumber     String   // Número do lote
   productionDate  DateTime @default(now())
   userId          String
@@ -226,11 +215,11 @@ model Production {
   updatedAt       DateTime @updatedAt
 
   // Relacionamentos
-  fichaId         String
-  ficha           FichaTecnica @relation(fields: [fichaId], references: [id])
-  productId       String
-  product         Product @relation(fields: [productId], references: [id])
-  user            User @relation(fields: [userId], references: [id])
+  technicalSheetId String
+  technicalSheet   TechnicalSheet @relation(fields: [technicalSheetId], references: [id])
+  productId        String?
+  product          Product? @relation(fields: [productId], references: [id])
+  user             User @relation(fields: [userId], references: [id])
   
   stockMovements  StockMovement[]
 
@@ -267,21 +256,24 @@ enum MovementType {
 }
 
 model Sale {
-  id          String   @id @default(cuid())
-  weight      Float    // Peso vendido
-  unitPrice   Float    // Preço unitário
-  totalPrice  Float    // Preço total
-  profit      Float    // Lucro aplicado (%)
-  saleDate    DateTime @default(now())
-  userId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  quantity        Int      @default(1)
+  weight          Float    // Peso vendido
+  unitPrice       Float    // Preço unitário
+  totalPrice      Float    // Preço total
+  costPrice       Float    @default(0)
+  profit          Float    @default(0)
+  profitPercentage Float   @default(0)
+  channel         String   // varejo, atacado
+  notes           String?
+  saleDate        DateTime @default(now())
+  userId          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Relacionamentos
   productId   String
   product     Product @relation(fields: [productId], references: [id])
-  channelId   String
-  channel     SalesChannel @relation(fields: [channelId], references: [id])
   user        User @relation(fields: [userId], references: [id])
 
   @@map("sales")

@@ -55,14 +55,18 @@ async function main() {
   ]
 
   for (const category of ingredientCategories) {
-    await prisma.ingredientCategory.upsert({
-      where: { name: category.name },
-      update: {},
-      create: {
-        ...category,
-        userId: adminUser.id
-      }
+    const existing = await prisma.ingredientCategory.findFirst({
+      where: { name: category.name, userId: adminUser.id }
     })
+    
+    if (!existing) {
+      await prisma.ingredientCategory.create({
+        data: {
+          ...category,
+          userId: adminUser.id
+        }
+      })
+    }
   }
 
   console.log('✅ Categorias de insumos criadas')
@@ -76,37 +80,23 @@ async function main() {
   ]
 
   for (const category of productCategories) {
-    await prisma.productCategory.upsert({
-      where: { name: category.name },
-      update: {},
-      create: {
-        ...category,
-        userId: adminUser.id
-      }
+    const existing = await prisma.productCategory.findFirst({
+      where: { name: category.name, userId: adminUser.id }
     })
+    
+    if (!existing) {
+      await prisma.productCategory.create({
+        data: {
+          ...category,
+          userId: adminUser.id
+        }
+      })
+    }
   }
 
   console.log('✅ Categorias de produtos criadas')
 
-  const salesChannels = [
-    { name: 'Varejo', description: 'Venda direta ao consumidor' },
-    { name: 'Atacado', description: 'Venda para revendedores' },
-    { name: 'Delivery', description: 'Entrega em domicílio' },
-    { name: 'Eventos', description: 'Vendas para eventos' }
-  ]
-
-  for (const channel of salesChannels) {
-    await prisma.salesChannel.upsert({
-      where: { name: channel.name },
-      update: {},
-      create: {
-        ...channel,
-        userId: adminUser.id
-      }
-    })
-  }
-
-  console.log('✅ Canais de venda criados')
+  console.log('✅ Dados básicos criados')
 
   console.log('🎉 Seed concluído com sucesso!')
 }
