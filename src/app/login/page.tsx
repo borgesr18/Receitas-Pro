@@ -20,7 +20,8 @@ export default function LoginPage() {
 
     try {
       if (!supabase) {
-        throw new Error('Supabase client not available')
+        setError('Sistema não configurado. Entre em contato com o administrador.')
+        return
       }
       
       if (isSignUp) {

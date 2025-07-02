@@ -5,11 +5,8 @@ const createSupabaseClient = () => {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   
   if (!supabaseUrl || !supabaseAnonKey) {
-    if (typeof window === 'undefined') {
-      console.warn('Supabase environment variables not available during build')
-      return null
-    }
-    throw new Error('Supabase environment variables are required')
+    console.warn('Supabase environment variables not available. Please configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel environment variables.')
+    return null
   }
   
   return createClient(supabaseUrl, supabaseAnonKey)
