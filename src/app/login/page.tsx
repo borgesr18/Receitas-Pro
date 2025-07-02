@@ -19,6 +19,10 @@ export default function LoginPage() {
     setError('')
 
     try {
+      if (!supabase) {
+        throw new Error('Supabase client not available')
+      }
+      
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({
           email,
