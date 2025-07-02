@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import React, { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { Plus, Search, Edit, Trash2, FileText, Calculator, Printer } from 'lucide-react'
