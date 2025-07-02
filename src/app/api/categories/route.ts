@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       orderBy: { name: 'asc' }
     })
 
-    return NextResponse.json(categories)
+    return NextResponse.json({ ingredientCategories: categories })
   } catch (error) {
     console.error('Error fetching categories:', error)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

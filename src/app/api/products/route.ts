@@ -37,7 +37,6 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         averageWeight: parseFloat(averageWeight),
-        salesChannels: salesChannels || ['varejo'],
         categoryId: categoryId || 'default-category-id',
         userId: user.id
       },

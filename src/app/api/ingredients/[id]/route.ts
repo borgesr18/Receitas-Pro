@@ -4,12 +4,12 @@ import { prisma } from '@/lib/prisma'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth()
     const body = await request.json()
-    const { id } = params
+    const { id } = await context.params
 
     const { name, purchaseQuantity, pricePerUnit, supplier, purchaseDate, expiryDate, storageLocation, unitId, categoryId } = body
 
@@ -48,11 +48,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth()
-    const { id } = params
+    const { id } = await context.params
 
     await prisma.ingredient.delete({
       where: { 
