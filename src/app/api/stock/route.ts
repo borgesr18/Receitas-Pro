@@ -45,26 +45,15 @@ export async function GET(request: NextRequest) {
       const products = await prisma.product.findMany({
         where: { userId: user.id },
         include: {
-          category: true,
-          stockMovements: {
-            orderBy: { createdAt: 'desc' },
-            take: 5
-          }
+          category: true
         },
         orderBy: { name: 'asc' }
       })
 
       const productsWithStock = products.map(product => {
-        const totalIn = product.stockMovements
-          .filter(m => m.type === 'IN')
-          .reduce((sum, m) => sum + m.quantity, 0)
-        const totalOut = product.stockMovements
-          .filter(m => m.type === 'OUT')
-          .reduce((sum, m) => sum + m.quantity, 0)
-        
         return {
           ...product,
-          currentStock: totalIn - totalOut
+          currentStock: 0 // Products don't have direct stock movements in this schema
         }
       })
 
@@ -78,7 +67,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.product.findMany({
         where: { userId: user.id },
-        include: { stockMovements: true }
+        include: { category: true }
       })
     ])
 
@@ -107,12 +96,10 @@ export async function POST(request: NextRequest) {
 
     const stockMovement = await prisma.stockMovement.create({
       data: {
-        itemId,
-        itemType: itemType.toUpperCase(),
-        type: type.toUpperCase(),
+        ingredientId: itemType === 'ingredient' ? itemId : null,
+        type: type.toUpperCase() as any,
         quantity: parseFloat(quantity),
         reason,
-        batchNumber,
         userId: user.id
       }
     })
