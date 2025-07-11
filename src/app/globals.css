@@ -4,11 +4,13 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: rgb(45, 45, 68);
   }
   
   body {
     @apply bg-background text-text font-sans antialiased;
+    background: linear-gradient(135deg, #0F0F23 0%, #1A1A2E 100%);
+    min-height: 100vh;
   }
   
   html, body {
@@ -16,31 +18,182 @@
     margin: 0;
     padding: 0;
   }
+
+  /* Scrollbar personalizado */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-background-secondary;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-surface-secondary;
+  }
 }
 
 @layer components {
+  /* Botões modernos com gradientes e sombras */
   .btn-primary {
-    @apply bg-accent text-background px-4 py-2 rounded-md hover:bg-hover transition-colors font-medium;
+    @apply bg-gradient-to-r from-accent to-accent-light text-white px-6 py-3 rounded-xl hover:from-accent-hover hover:to-accent font-semibold transition-all duration-300 transform hover:scale-105 shadow-glow hover:shadow-glow-lg;
   }
   
   .btn-secondary {
-    @apply bg-card text-text border border-border px-4 py-2 rounded-md hover:bg-hover transition-colors;
+    @apply bg-card border border-border-light text-text px-6 py-3 rounded-xl hover:bg-card-secondary hover:border-border-accent transition-all duration-300 font-medium shadow-soft hover:shadow-medium;
+  }
+
+  .btn-ghost {
+    @apply text-text-secondary hover:text-text hover:bg-surface/50 px-4 py-2 rounded-lg transition-all duration-200;
   }
   
+  /* Campos de entrada modernos */
   .input-field {
-    @apply bg-card border border-border rounded-md px-3 py-2 text-text placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent;
+    @apply bg-card border border-border rounded-xl px-4 py-3 text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all duration-200 shadow-soft;
   }
   
+  /* Cards elegantes com glassmorphism */
   .card {
-    @apply bg-card border border-border rounded-lg p-6 shadow-sm;
+    @apply bg-card/80 backdrop-blur-xl border border-border rounded-2xl p-6 shadow-medium hover:shadow-large transition-all duration-300 animate-fade-in;
+  }
+
+  .card-premium {
+    @apply bg-gradient-to-br from-card to-card-secondary border border-border-light rounded-2xl p-6 shadow-large hover:shadow-glow transition-all duration-300;
+  }
+
+  .card-compact {
+    @apply bg-card/90 backdrop-blur-lg border border-border rounded-xl p-4 shadow-soft hover:shadow-medium transition-all duration-200;
   }
   
+  /* Sidebar moderna */
   .sidebar-link {
-    @apply flex items-center gap-3 px-4 py-3 text-text-secondary hover:text-text hover:bg-hover rounded-md transition-colors;
+    @apply flex items-center gap-3 px-4 py-3 text-text-secondary hover:text-text hover:bg-surface/60 rounded-xl transition-all duration-200 group relative overflow-hidden;
+  }
+  
+  .sidebar-link::before {
+    content: '';
+    @apply absolute left-0 top-0 w-1 h-full bg-accent transform scale-y-0 transition-transform duration-200 rounded-r-full;
   }
   
   .sidebar-link.active {
-    @apply text-accent bg-hover;
+    @apply text-accent bg-gradient-to-r from-accent/10 to-transparent border-l-2 border-accent;
+  }
+
+  .sidebar-link.active::before {
+    @apply scale-y-100;
+  }
+
+  /* Headers e títulos */
+  .page-header {
+    @apply mb-8 animate-slide-in;
+  }
+
+  .page-title {
+    @apply text-4xl font-bold text-text mb-2 bg-gradient-to-r from-text to-text-secondary bg-clip-text text-transparent;
+  }
+
+  .page-subtitle {
+    @apply text-text-secondary text-lg;
+  }
+
+  /* Tabelas modernas */
+  .table-modern {
+    @apply w-full rounded-xl overflow-hidden shadow-medium;
+  }
+
+  .table-modern thead {
+    @apply bg-gradient-to-r from-surface to-surface-secondary;
+  }
+
+  .table-modern th {
+    @apply px-6 py-4 text-left text-text-secondary font-semibold text-sm uppercase tracking-wider;
+  }
+
+  .table-modern td {
+    @apply px-6 py-4 text-text border-b border-border/50;
+  }
+
+  .table-modern tbody tr {
+    @apply hover:bg-surface/30 transition-colors duration-200;
+  }
+
+  /* Formulários */
+  .form-group {
+    @apply space-y-2;
+  }
+
+  .form-label {
+    @apply block text-sm font-semibold text-text mb-2;
+  }
+
+  .form-error {
+    @apply text-error text-sm mt-1;
+  }
+
+  /* Badges e status */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply bg-success/20 text-success-light border border-success/30;
+  }
+
+  .badge-warning {
+    @apply bg-warning/20 text-warning-light border border-warning/30;
+  }
+
+  .badge-error {
+    @apply bg-error/20 text-error-light border border-error/30;
+  }
+
+  .badge-info {
+    @apply bg-accent/20 text-accent-light border border-accent/30;
+  }
+
+  /* Animações de entrada */
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  /* Loading states */
+  .loading-shimmer {
+    @apply animate-pulse bg-gradient-to-r from-surface via-surface-secondary to-surface bg-[length:200%_100%];
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* Tooltips */
+  .tooltip {
+    @apply relative;
+  }
+
+  .tooltip::before {
+    content: attr(data-tooltip);
+    @apply absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-surface text-text text-sm rounded-lg opacity-0 pointer-events-none transition-opacity duration-200;
+  }
+
+  .tooltip:hover::before {
+    @apply opacity-100;
   }
 }
 
